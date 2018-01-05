@@ -1,18 +1,18 @@
-package brainfck
+package brainfck.v2
 
 import java.io.{InputStream, OutputStream}
 
-import brainfck.Brainfck._
+import brainfck.common.BrainfckImpl
 
-class BrainfckImperative extends BrainfckImpl {
-  def run(program: Seq[IRNode])(in: InputStream, out: OutputStream): Unit = {
+object BrainfckImperative extends BrainfckImpl[Program] {
+
+  def run(program: Seq[ASTNode])(in: InputStream, out: OutputStream): Unit = {
     var ptr = 0
     val tape = Array.fill(1 << 16)(0)
-    def execute(op: IRNode): Unit = {
+    def execute(op: ASTNode): Unit = {
       op match {
         case Jump(delta) => ptr += delta
         case Mutate(delta) => tape(ptr) += delta
-        //case BoomerangMutate(deltaPtr, deltaValue) => tape(ptr + deltaPtr) += deltaValue
         case Read => tape(ptr) = in.read()
         case Write =>
           out.write(tape(ptr))
@@ -20,7 +20,6 @@ class BrainfckImperative extends BrainfckImpl {
         case Loop(body) =>
           while (tape(ptr) != 0)
             body.foreach(execute)
-        //case Assign(value) => tape(ptr) = value
       }
     }
     program.foreach(execute)

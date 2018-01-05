@@ -1,21 +1,21 @@
-package brainfck
+package brainfck.v2
 
 import java.io.{InputStream, OutputStream}
 
-import brainfck.Brainfck._
+import brainfck.common.BrainfckImpl
 import org.cojen.classfile.Opcode
 
 /**
-  * Dynamically compiles a Brainfck program into bytecode.
+  * Dynamically compiles a Brainfck program to bytecode.
   */
-class BrainfckBytecode extends BrainfckImpl {
+object BrainfckBytecode extends BrainfckImpl[Program] {
 
   import org.cojen.classfile.{CodeBuilder, Modifiers, RuntimeClassFile, TypeDesc}
 
   /**
     * Compiles the Brainfck program to Bytecode.
     */
-  def compile(program: Seq[IRNode]): RuntimeClassFile = {
+  def compile(program: Seq[ASTNode]): RuntimeClassFile = {
     // Create a ClassFile with the super class of Object.
     val cf = new RuntimeClassFile("PureBytecodeBrainfck")
 
@@ -44,17 +44,10 @@ class BrainfckBytecode extends BrainfckImpl {
     val inParam = 0 // in
     val outParam = 1 // out
 
-    def compile(op: IRNode): Unit = {
+    def compile(op: ASTNode): Unit = {
       op match {
         case Jump(delta) =>
           b.integerIncrement(ptr, delta)
-
-        case Assign(value) =>
-          // tape(ptr) = value
-          b.loadLocal(tape)
-          b.loadLocal(ptr)
-          b.loadConstant(value)
-          b.storeToArray(TypeDesc.INT)
 
         case Mutate(delta) =>
           // tape(ptr) += delta
@@ -63,18 +56,6 @@ class BrainfckBytecode extends BrainfckImpl {
           b.dup2()
           b.loadFromArray(TypeDesc.INT)
           b.loadConstant(delta)
-          b.math(Opcode.IADD)
-          b.storeToArray(TypeDesc.INT)
-
-        case BoomerangMutate(deltaPtr, deltaValue) =>
-          // tape(ptr + deltaPtr) += deltaValue
-          b.loadLocal(tape)
-          b.loadLocal(ptr)
-          b.loadConstant(deltaPtr)
-          b.math(Opcode.IADD)
-          b.dup2()
-          b.loadFromArray(TypeDesc.INT)
-          b.loadConstant(deltaValue)
           b.math(Opcode.IADD)
           b.storeToArray(TypeDesc.INT)
 
@@ -120,7 +101,7 @@ class BrainfckBytecode extends BrainfckImpl {
     cf
   }
 
-  def run(program: Seq[IRNode])(in: InputStream, out: OutputStream): Unit = {
+  def run(program: Program)(in: InputStream, out: OutputStream): Unit = {
     val cf = compile(program)
     val clazz = cf.defineClass()
 
